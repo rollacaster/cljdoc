@@ -30,6 +30,7 @@
 (spec/def :cljdoc.doc/type #{:cljdoc/markdown :cljdoc/asciidoc})
 (spec/def :cljdoc/asciidoc string?)
 (spec/def :cljdoc.doc/contributors (spec/coll-of string?))
+(spec/def :cljdoc.doc/external-url string?)
 (spec/def ::slug ::ne-string)
 (spec/def ::title ::ne-string)
 (spec/def ::file string?)
@@ -46,7 +47,8 @@
                    :cljdoc.doc/type
                    :cljdoc.doc/contributors
                    :cljdoc/asciidoc
-                   :cljdoc/markdown]))
+                   :cljdoc/markdown
+                   :cljdoc.doc/external-url]))
 
 (spec/def ::children
   (spec/coll-of ::entry))
@@ -57,7 +59,7 @@
 ;; Specs for the Hiccup style configuration format that library authors
 ;; may use to specify articles and their hierarchy.
 (spec/def ::hiccup-attrs
-  (spec/keys :opt-un [::file]))
+  (spec/keys :opt-un [::file ::url]))
 
 (spec/def ::hiccup-entry
   (spec/spec
@@ -109,6 +111,9 @@
 
       (:file attrs)
       (assoc-in [:attrs :cljdoc.doc/contributors] (get-contributors file))
+
+      (:url attrs)
+      (assoc-in [:attrs :cljdoc.doc/external-url] (:url attrs))
 
       (seq children)
       (assoc :children (mapv (partial process-toc-entry fns) children)))))
