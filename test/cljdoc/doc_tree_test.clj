@@ -22,12 +22,15 @@
                                :cljdoc.doc/type :cljdoc/asciidoc
                                :cljdoc.doc/contributors ["A" "B" "C"]
                                :cljdoc/asciidoc "nested.adoc"
-                               :slug "nested"}}]}]
+                               :slug "nested"}}]}
+          {:title "Community-Page",
+           :attrs {:cljdoc.doc/external-url "http://my-community.com", :slug "community-page"}}]
          (doctree/process-toc
           {:slurp-fn identity
            :get-contributors (constantly ["A" "B" "C"])}
           [["Readme" {:file "README.md"}
-            ["Nested" {:file "nested.adoc"}]]]))))
+            ["Nested" {:file "nested.adoc"}]]
+           ["Community-Page" {:url "http://my-community.com"}]]))))
 
 ;; we redefine spec for entry because for test we want every entry have attrs with slug so that slug-path will be
 ;; generated (neighbours are found based on the slug-path)

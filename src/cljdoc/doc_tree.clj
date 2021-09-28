@@ -30,7 +30,7 @@
 (spec/def :cljdoc.doc/type #{:cljdoc/markdown :cljdoc/asciidoc})
 (spec/def :cljdoc/asciidoc string?)
 (spec/def :cljdoc.doc/contributors (spec/coll-of string?))
-(spec/def :cljdoc.doc/external-url string?)
+(spec/def :cljdoc.doc/external-url (spec/and ::ne-string #(try (java.net.URI. %) true (catch Exception _ false))))
 (spec/def ::slug ::ne-string)
 (spec/def ::title ::ne-string)
 (spec/def ::file string?)
@@ -58,13 +58,15 @@
 
 ;; Specs for the Hiccup style configuration format that library authors
 ;; may use to specify articles and their hierarchy.
-(spec/def ::hiccup-attrs
-  (spec/keys :opt-un [::file ::url]))
+(spec/def ::file-attrs
+  (spec/map-of #{:file} ::file))
+(spec/def ::url-attrs
+  (spec/map-of #{:url} :cljdoc.doc/external-url))
 
 (spec/def ::hiccup-entry
   (spec/spec
    (spec/cat :title ::title
-             :attrs (spec/? ::hiccup-attrs)
+             :attrs (spec/? (spec/or :file-attrs ::file-attrs :url-attrs ::url-attrs))
              :children (spec/* ::hiccup-entry))))
 
 (defmulti filepath->type
@@ -85,38 +87,38 @@
 (defmethod filepath->type "md" [_] :cljdoc/markdown)
 (defmethod filepath->type "adoc" [_] :cljdoc/asciidoc)
 
-(defn- process-toc-entry
-  [{:keys [slurp-fn get-contributors] :as fns}
-   {:keys [title attrs children]}]
-  {:pre [(string? title) (fn? slurp-fn) (fn? get-contributors)]}
+(defn- process-file-attrs [{:keys [slurp-fn get-contributors]} file]
+  {:pre [(fn? slurp-fn) (fn? get-contributors)]}
   ;; If there is a file it has to be matched by filepath->type's dispatch-fn
   ;; Otherwise the line below will throw an exception (intentionally so)
-  (let [entry-type (some-> attrs :file filepath->type)
-        file (-> attrs :file)
+  (let [entry-type (filepath->type file)
         slurp! (fn [file] (or (slurp-fn file)
-                              (throw (Exception. (format "Could not read contents of %s" file)))))]
-    (cond-> {:title title}
-
-      (:file attrs)
-      (assoc-in [:attrs :cljdoc.doc/source-file] (:file attrs))
+                             (throw (Exception. (format "Could not read contents of %s" file)))))]
+    (cond-> {:attrs {:cljdoc.doc/source-file file
+                     :cljdoc.doc/contributors (get-contributors file)}}
 
       entry-type
-      (assoc-in [:attrs entry-type] (slurp! (:file attrs)))
+      (update :attrs #(merge % (hash-map entry-type (slurp! file)
+                                         :cljdoc.doc/type entry-type))))))
 
-      entry-type
-      (assoc-in [:attrs :cljdoc.doc/type] entry-type)
+(defn- process-toc-entry
+  [process-fns
+   {[attrs-type attrs] :attrs :keys [title children]}]
+  {:pre [(string? title)]}
+  (cond->
+      (merge
+       {:title title}
+       (case attrs-type
+         :file-attrs
+         (process-file-attrs process-fns (:file attrs))
+         :url-attrs
+         {:attrs {:cljdoc.doc/external-url (:url attrs)}}))
 
-      (nil? (:slug attrs))
-      (assoc-in [:attrs :slug] (cuerdas/uslug title))
+    (nil? (:slug attrs))
+    (assoc-in [:attrs :slug] (cuerdas/uslug title))
 
-      (:file attrs)
-      (assoc-in [:attrs :cljdoc.doc/contributors] (get-contributors file))
-
-      (:url attrs)
-      (assoc-in [:attrs :cljdoc.doc/external-url] (:url attrs))
-
-      (seq children)
-      (assoc :children (mapv (partial process-toc-entry fns) children)))))
+    (seq children)
+    (assoc :children (mapv (partial process-toc-entry process-fns) children))))
 
 (spec/def ::slurp-fn fn?)
 (spec/def ::get-contributors fn?)
