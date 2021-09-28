@@ -38,6 +38,8 @@
                     {:class (when (seq (:children doc-page)) "mv2")}
                     [:a.link.blue.hover-dark-blue.dib.pv1
                      {:style {:word-wrap "break-word"}
+                      :target "_blank"
+                      :rel "noopener"
                       :href  (or (-> doc-page :attrs :cljdoc.doc/external-url)
                                  (doc-link version-entity slug-path))
                       :class (when (= current-page slug-path) "fw7")}
