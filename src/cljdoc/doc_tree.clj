@@ -30,7 +30,13 @@
 (spec/def :cljdoc.doc/type #{:cljdoc/markdown :cljdoc/asciidoc})
 (spec/def :cljdoc/asciidoc string?)
 (spec/def :cljdoc.doc/contributors (spec/coll-of string?))
-(spec/def :cljdoc.doc/external-url (spec/and ::ne-string #(try (java.net.URI. %) true (catch Exception _ false))))
+(spec/def :cljdoc.doc/external-url
+  (spec/and ::ne-string
+            #(try (let [uri (java.net.URI. %)]
+                    (and (or (= (cstr/lower-case (.getScheme uri)) "http")
+                             (= (cstr/lower-case (.getScheme uri)) "https"))
+                         ((complement cstr/blank?) (.getHost uri))))
+                  (catch java.net.URISyntaxException _ false))))
 (spec/def ::slug ::ne-string)
 (spec/def ::title ::ne-string)
 (spec/def ::file string?)
@@ -42,7 +48,7 @@
              :opt-un [::attrs ::children]))
 
 (spec/def ::attrs
-  (spec/keys :req-un [::slug]
+  (spec/keys :opt-un [::slug]
              :opt [:cljdoc.doc/source-file
                    :cljdoc.doc/type
                    :cljdoc.doc/contributors
@@ -87,7 +93,8 @@
 (defmethod filepath->type "md" [_] :cljdoc/markdown)
 (defmethod filepath->type "adoc" [_] :cljdoc/asciidoc)
 
-(defn- process-file-attrs [{:keys [slurp-fn get-contributors]} file]
+(defn- process-file-attrs [{:keys [slurp-fn get-contributors]}
+                           title {:keys [file slug]}]
   {:pre [(fn? slurp-fn) (fn? get-contributors)]}
   ;; If there is a file it has to be matched by filepath->type's dispatch-fn
   ;; Otherwise the line below will throw an exception (intentionally so)
@@ -96,26 +103,23 @@
                               (throw (Exception. (format "Could not read contents of %s" file)))))]
     (cond-> {:attrs {:cljdoc.doc/source-file file
                      :cljdoc.doc/contributors (get-contributors file)}}
-
       entry-type
       (update :attrs #(merge % (hash-map entry-type (slurp! file)
-                                         :cljdoc.doc/type entry-type))))))
+                                         :cljdoc.doc/type entry-type)))
+      (nil? slug)
+      (assoc-in [:attrs :slug] (cuerdas/uslug title)))))
 
 (defn- process-toc-entry
   [process-fns
    {[attrs-type attrs] :attrs :keys [title children]}]
   {:pre [(string? title)]}
-  (cond->
-   (merge
-    {:title title}
-    (case attrs-type
-      :file-attrs
-      (process-file-attrs process-fns (:file attrs))
-      :url-attrs
-      {:attrs {:cljdoc.doc/external-url (:url attrs)}}))
-
-    (nil? (:slug attrs))
-    (assoc-in [:attrs :slug] (cuerdas/uslug title))
+  (cond-> (merge
+           {:title title}
+           (case attrs-type
+             :file-attrs
+             (process-file-attrs process-fns title attrs)
+             :url-attrs
+             {:attrs {:cljdoc.doc/external-url (:url attrs)}}))
 
     (seq children)
     (assoc :children (mapv (partial process-toc-entry process-fns) children))))

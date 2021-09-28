@@ -37,15 +37,13 @@
                        external-url (-> doc-page :attrs :cljdoc.doc/external-url)]
                    [:li
                     {:class (when (seq (:children doc-page)) "mv2")}
-                    (when external-url
-                      [:img.v-mid.mr1 {:src "https://microicon-clone.vercel.app/external/12"}])
                     [:a.link.blue.hover-dark-blue.dib.pv1
                      {:style {:word-wrap "break-word"}
-                      :target "_blank"
-                      :rel "noopener"
                       :href  (or external-url (doc-link version-entity slug-path))
                       :class (when (= current-page slug-path) "fw7")}
-                     (:title doc-page)]
+                     (:title doc-page)
+                     (when external-url
+                      [:img.v-mid.ml1 {:src "https://microicon-clone.vercel.app/external/12"}])]                    
                     (doc-tree-view version-entity (:children doc-page) current-page (inc level))])))
           (into [:ul.list.ma0 {:class (if (pos? level) "f6-ns pl2" "pl0")}])))))
 

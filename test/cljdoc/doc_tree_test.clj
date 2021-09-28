@@ -24,7 +24,7 @@
                                :cljdoc/asciidoc "nested.adoc"
                                :slug "nested"}}]}
           {:title "Community-Page",
-           :attrs {:cljdoc.doc/external-url "http://my-community.com", :slug "community-page"}}]
+           :attrs {:cljdoc.doc/external-url "http://my-community.com"}}]
          (doctree/process-toc
           {:slurp-fn identity
            :get-contributors (constantly ["A" "B" "C"])}
