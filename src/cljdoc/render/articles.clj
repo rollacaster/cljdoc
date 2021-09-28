@@ -33,15 +33,17 @@
    (when (seq doc-bundle)
      (->> doc-bundle
           (map (fn [doc-page]
-                 (let [slug-path (-> doc-page :attrs :slug-path)]
+                 (let [slug-path (-> doc-page :attrs :slug-path)
+                       external-url (-> doc-page :attrs :cljdoc.doc/external-url)]
                    [:li
                     {:class (when (seq (:children doc-page)) "mv2")}
+                    (when external-url
+                      [:img.v-mid.mr1 {:src "https://microicon-clone.vercel.app/external/12"}])
                     [:a.link.blue.hover-dark-blue.dib.pv1
                      {:style {:word-wrap "break-word"}
                       :target "_blank"
                       :rel "noopener"
-                      :href  (or (-> doc-page :attrs :cljdoc.doc/external-url)
-                                 (doc-link version-entity slug-path))
+                      :href  (or external-url (doc-link version-entity slug-path))
                       :class (when (= current-page slug-path) "fw7")}
                      (:title doc-page)]
                     (doc-tree-view version-entity (:children doc-page) current-page (inc level))])))
