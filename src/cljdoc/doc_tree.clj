@@ -93,7 +93,7 @@
   ;; Otherwise the line below will throw an exception (intentionally so)
   (let [entry-type (filepath->type file)
         slurp! (fn [file] (or (slurp-fn file)
-                             (throw (Exception. (format "Could not read contents of %s" file)))))]
+                              (throw (Exception. (format "Could not read contents of %s" file)))))]
     (cond-> {:attrs {:cljdoc.doc/source-file file
                      :cljdoc.doc/contributors (get-contributors file)}}
 
@@ -106,13 +106,13 @@
    {[attrs-type attrs] :attrs :keys [title children]}]
   {:pre [(string? title)]}
   (cond->
-      (merge
-       {:title title}
-       (case attrs-type
-         :file-attrs
-         (process-file-attrs process-fns (:file attrs))
-         :url-attrs
-         {:attrs {:cljdoc.doc/external-url (:url attrs)}}))
+   (merge
+    {:title title}
+    (case attrs-type
+      :file-attrs
+      (process-file-attrs process-fns (:file attrs))
+      :url-attrs
+      {:attrs {:cljdoc.doc/external-url (:url attrs)}}))
 
     (nil? (:slug attrs))
     (assoc-in [:attrs :slug] (cuerdas/uslug title))
