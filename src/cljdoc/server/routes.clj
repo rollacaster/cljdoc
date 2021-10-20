@@ -29,6 +29,10 @@
   #{["/builds/:id" :get nop :route-name :show-build]
     ["/builds" :get nop :route-name :all-builds]})
 
+;; TODO decide on final route name
+(defn compare-routes []
+  #{["/compare/:group-id-a/:artifact-id-a/:version-a/with/:group-id-b/:artifact-id-b/:version-b" :get nop :route-name :compare/index]})
+
 (defn documentation-routes []
   ;; param :group-id of first route is a bit misleading
   ;; see https://github.com/pedestal/pedestal/issues/337
@@ -76,7 +80,8 @@
         (api-routes)
         (build-log-routes)
         (info-pages-routes)
-        (utility-routes)]
+        (utility-routes)
+        (compare-routes)]
        (reduce into #{})
        (route/expand-routes)
        (keep route-resolver)))
