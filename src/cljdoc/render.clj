@@ -18,6 +18,13 @@
   [page-type _ _]
   (format "%s not implemented, sorry" page-type))
 
+(defmethod render :compare/index
+  [_ _ cache-bundles]
+  (layout/page
+   {}
+   (layout/layout
+    {:main-sidebar-contents (sidebar/compare-sidebar cache-bundles)})))
+
 (defmethod render :artifact/version
   [_ route-params {:keys [cache-bundle pom last-build]}]
   (let [version-entity (:version-entity cache-bundle)]

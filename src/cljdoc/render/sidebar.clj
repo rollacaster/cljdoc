@@ -1,12 +1,15 @@
 (ns cljdoc.render.sidebar
   (:require [cljdoc.util :as util]
+            [cljdoc.util.ns-tree :as ns-tree]
             [cljdoc.doc-tree :as doctree]
             [cljdoc.server.routes :as routes]
             [cljdoc.server.build-log :as build-log]
             [cljdoc.render.layout :as layout]
             [cljdoc.render.articles :as articles]
             [cljdoc.render.api :as api]
-            [cljdoc.bundle :as bundle]))
+            [cljdoc.bundle :as bundle]
+            [clojure.data :refer [diff]]
+            [clojure.string :as string]))
 
 (defn upgrade-notice [{:keys [version] :as version-map}]
   [:a.db.link.bg-washed-yellow.pa2.f7.mb3.dark-gray.lh-title
@@ -91,16 +94,51 @@
           " on how to fix this."]]])
 
      ;; Namespace listing
-     (let [ns-entities (bundle/ns-entities cache-bundle)]
+     (let [ns-entities (bundle/ns-entities cache-bundle)
+           keyed-namespaces (ns-tree/index-by :namespace ns-entities)]
        [:div.mb4
         (layout/sidebar-title "Namespaces")
         (if (seq ns-entities)
-          (api/namespace-list {:current (:namespace route-params)
-                               :version-entity version-entity}
-                              ns-entities)
+          (api/namespace-list
+           {:items (for [[ns level _ _leaf?] (ns-tree/namespace-hierarchy (keys keyed-namespaces))]
+                     (api/namespace-item
+                      {:ns ns
+                       :version-entity version-entity
+                       :class (when (= ns (:namespace route-params)) "b")
+                       :level level
+                       :nse (get keyed-namespaces ns)}))
+            :version-entity version-entity}
+           ns-entities)
           [:p.f7.gray.lh-title
            "We couldn't find any namespaces in this artifact. Most often the reason for this is
            that the analysis failed or that the artifact has been mispackaged and does not
            contain any Clojure source files. The latter might be on purpose for uber-module
            style artifacts. " "Please " [:a.blue.link {:href (util/github-url :issues)} "open
            an issue"] " and we'll be happy to look into it."])])]))
+
+(defn compare-sidebar [cache-bundles]
+  (let [[bundle-a bundle-b] cache-bundles
+        ns-entities (bundle/ns-entities (:cache-bundle bundle-a))
+        ns-entities2 (bundle/ns-entities (:cache-bundle bundle-b))
+        version-entity (:version-entity (:cache-bundle bundle-a))
+        keyed-namespaces (ns-tree/index-by :namespace ns-entities)]
+    [(layout/sidebar-title "Namespaces")
+     (let [[added-ns removed-ns] (diff
+                                  (set (map :namespace ns-entities))
+                                  (set (map :namespace ns-entities2)))]
+       (api/namespace-list
+        {:version-entity version-entity
+         :items
+         (for [[ns level _ _leaf?] (ns-tree/namespace-hierarchy (keys keyed-namespaces))]
+           (api/namespace-item
+            {:ns ns
+             :version-entity version-entity
+             :class (string/join " "
+                                 [(when (added-ns ns) "bg-light-green")
+                                  (when (and removed-ns (removed-ns ns)) "bg-light-red")])
+             :level level
+             :nse (get keyed-namespaces ns)}
+            (when (added-ns ns)
+              [:span.f7.gray.ml1
+               "new in " (:version version-entity)])))}
+        ns-entities))]))

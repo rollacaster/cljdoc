@@ -234,6 +234,36 @@
                          :headers {"Location" (routes/url-for (:route-name route) :path-params (merge (:path-params request) artifact-entity))}})
                  (update-in ctx [:request :path-params] merge artifact-entity))))}))
 
+;;; TODO This interceptor should be split up into several concerns and possible
+;;; error states should be considered (e.g. no artifacts found etc, no version
+;;; specified...) For now is mixing all of them and checking only the happy path
+;;; to allow prototyping of the view
+(defn compare-artifacts-loader-interceptor
+  [sys]
+  (interceptor/interceptor
+   {:name ::compare-artifacts-loader-interceptor
+    :enter (fn compare-artifacts-loader-interceptor [{:keys [route request] :as ctx}]
+             (let [{:keys [group-id-a artifact-id-a version-a
+                           group-id-b artifact-id-b version-b]}
+                   (:path-params request)]
+               (pu/ok-html
+                ctx
+                (html/render :compare/index
+                             [{:artifact-id artifact-id-a
+                               :group-id group-id-a
+                               :version version-a}
+                              {:artifact-id artifact-id-b
+                               :group-id group-id-b
+                               :version version-b}]
+                             (->> [{:artifact-id artifact-id-a
+                                    :group-id group-id-a
+                                    :version version-a}
+                                   {:artifact-id artifact-id-b
+                                    :group-id group-id-b
+                                    :version version-b}]
+                                  (map (fn [v-ent]
+                                         (load-data sys v-ent #{:pom :cache-bundle}))))))))}))
+
 (defn view
   "Combine various interceptors into an interceptor chain for
   rendering views for `route-name`."
@@ -506,7 +536,9 @@
          :badge-for-project  [(badge-interceptor)
                               resolve-version-interceptor
                               (seed-artifacts-keys #{:last-build})
-                              (artifact-data-loader deps)])
+                              (artifact-data-loader deps)]
+
+         :compare/index [(compare-artifacts-loader-interceptor deps)])
        (assoc route :interceptors)))
 
 (defmethod ig/init-key :cljdoc/pedestal [_ opts]
