@@ -103,6 +103,7 @@
            {:items (for [[ns level _ _leaf?] (ns-tree/namespace-hierarchy (keys keyed-namespaces))]
                      (api/namespace-item
                       {:ns ns
+                       :href (routes/url-for :artifact/namespace :path-params (assoc version-entity :namespace ns))
                        :version-entity version-entity
                        :class (when (= ns (:namespace route-params)) "b")
                        :level level
@@ -116,29 +117,30 @@
            style artifacts. " "Please " [:a.blue.link {:href (util/github-url :issues)} "open
            an issue"] " and we'll be happy to look into it."])])]))
 
-(defn compare-sidebar [cache-bundles]
+(defn compare-sidebar [path-params cache-bundles]
   (let [[bundle-a bundle-b] cache-bundles
         ns-entities (bundle/ns-entities (:cache-bundle bundle-a))
         ns-entities2 (bundle/ns-entities (:cache-bundle bundle-b))
-        version-entity (:version-entity (:cache-bundle bundle-a))
+        version-entity-a (:version-entity (:cache-bundle bundle-a))
         keyed-namespaces (ns-tree/index-by :namespace ns-entities)]
     [(layout/sidebar-title "Namespaces")
      (let [[added-ns removed-ns] (diff
                                   (set (map :namespace ns-entities))
                                   (set (map :namespace ns-entities2)))]
        (api/namespace-list
-        {:version-entity version-entity
+        {:version-entity version-entity-a
          :items
          (for [[ns level _ _leaf?] (ns-tree/namespace-hierarchy (keys keyed-namespaces))]
            (api/namespace-item
             {:ns ns
-             :version-entity version-entity
+             :href (routes/url-for :compare/namespace :path-params (assoc path-params :namespace ns))
+             :version-entity version-entity-a
              :class (string/join " "
-                                 [(when (added-ns ns) "bg-light-green")
+                                 [(when (and added-ns (added-ns ns)) "bg-light-green")
                                   (when (and removed-ns (removed-ns ns)) "bg-light-red")])
              :level level
              :nse (get keyed-namespaces ns)}
-            (when (added-ns ns)
+            (when (and added-ns (added-ns ns))
               [:span.f7.gray.ml1
-               "new in " (:version version-entity)])))}
+               "new in " (:version version-entity-a)])))}
         ns-entities))]))

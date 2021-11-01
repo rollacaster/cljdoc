@@ -31,7 +31,8 @@
 
 ;; TODO decide on final route name
 (defn compare-routes []
-  #{["/compare/:group-id-a/:artifact-id-a/:version-a/with/:group-id-b/:artifact-id-b/:version-b" :get nop :route-name :compare/index]})
+  #{["/compare/:group-id-a/:artifact-id-a/:version-a/with/:group-id-b/:artifact-id-b/:version-b" :get nop :route-name :compare/index]
+    ["/compare/:group-id-a/:artifact-id-a/:version-a/with/:group-id-b/:artifact-id-b/:version-b/api/:namespace" :get nop :route-name :compare/namespace]})
 
 (defn documentation-routes []
   ;; param :group-id of first route is a bit misleading

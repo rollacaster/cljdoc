@@ -1,5 +1,6 @@
 (ns cljdoc.render
   (:require [cljdoc.doc-tree :as doctree]
+            [cljdoc.platforms :as platf]
             [cljdoc.render.rich-text :as rich-text]
             [cljdoc.render.layout :as layout]
             [cljdoc.render.articles :as articles]
@@ -10,7 +11,9 @@
             [cljdoc.util.scm :as scm]
             [cljdoc.bundle :as bundle]
             [cljdoc.spec]
-            [cljdoc.server.routes :as routes]))
+            [cljdoc.server.routes :as routes]
+            [clojure.data :refer [diff]]
+            [clojure.string :as string]))
 
 (defmulti render (fn [page-type _route-params _cache-bundle] page-type))
 
@@ -19,11 +22,45 @@
   (format "%s not implemented, sorry" page-type))
 
 (defmethod render :compare/index
-  [_ _ cache-bundles]
+  [_ path-params artifacts-data]
   (layout/page
    {}
    (layout/layout
-    {:main-sidebar-contents (sidebar/compare-sidebar cache-bundles)})))
+    {:main-sidebar-contents (sidebar/compare-sidebar path-params artifacts-data)})))
+
+(defmethod render :compare/namespace
+  [_ {:keys [artifact-id-a group-id-a version-a namespace] :as path-params} artifacts-data]
+  (def path-params path-params)
+  (let [defs-a (bundle/defs-for-ns-with-src-uri (:cache-bundle (first artifacts-data)) namespace)
+        defs-b  (bundle/defs-for-ns-with-src-uri (:cache-bundle (second artifacts-data)) namespace)
+        [added-var-names removed-var-names unchanged-var-names]
+        (diff
+         (set (map (comp :name first :platforms) defs-a))
+         (set (map (comp :name first :platforms) defs-b)))
+        removed-vars (remove (fn [{[{:keys [name]}]:platforms}] (unchanged-var-names name)) defs-b)
+        [[dominant-platf] :as platf-stats] (api/platform-stats defs-a)]
+    (layout/page
+     {}
+     (layout/layout
+      {:main-sidebar-contents (sidebar/compare-sidebar path-params artifacts-data)
+       :vars-sidebar-contents (when (seq defs-a)
+                                [(api/platform-support-note platf-stats)
+                                 (api/definitions-list
+                                   (for [def (sort-by (fn [{[{:keys [name]}]  :platforms}] name)
+                                                      (concat defs-a removed-vars))
+                                         :let [def-name (platf/get-field def :name)
+                                               platforms (platf/platforms def)]]
+                                     (api/definition
+                                       {:name def-name
+                                        :platforms platforms
+                                        :class (string/join
+                                                " "
+                                                [(when (and added-var-names (added-var-names def-name))
+                                                   "bg-light-green")
+                                                 (when (and removed-var-names (removed-var-names def-name))
+                                                   "bg-light-red")])
+                                        :foreign-platform (= (platf/platforms def) dominant-platf)})))])}))))
+
 
 (defmethod render :artifact/version
   [_ route-params {:keys [cache-bundle pom last-build]}]
@@ -111,7 +148,14 @@
              :main-sidebar-contents (sidebar/sidebar-contents route-params cache-bundle last-build)
              :vars-sidebar-contents (when (seq defs)
                                       [(api/platform-support-note platf-stats)
-                                       (api/definitions-list ns-emap defs {:indicate-platforms-other-than dominant-platf})])
+                                       (api/definitions-list
+                                         (for [def defs
+                                               :let [def-name (platf/get-field def :name)
+                                                     platforms (platf/platforms def)]]
+                                           (api/definition
+                                             {:name def-name
+                                              :platforms platforms
+                                              :foreign-platform (= (platf/platforms def) dominant-platf)})))])
              :content (api/namespace-page {:ns-entity ns-emap
                                            :ns-data ns-data
                                            :defs defs

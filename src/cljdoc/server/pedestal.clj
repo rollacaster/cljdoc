@@ -245,16 +245,12 @@
     :enter (fn compare-artifacts-loader-interceptor [{:keys [route request] :as ctx}]
              (let [{:keys [group-id-a artifact-id-a version-a
                            group-id-b artifact-id-b version-b]}
-                   (:path-params request)]
+                   (:path-params request)
+                   page-type (-> route :route-name)]
                (pu/ok-html
                 ctx
-                (html/render :compare/index
-                             [{:artifact-id artifact-id-a
-                               :group-id group-id-a
-                               :version version-a}
-                              {:artifact-id artifact-id-b
-                               :group-id group-id-b
-                               :version version-b}]
+                (html/render page-type
+                             (:path-params request)
                              (->> [{:artifact-id artifact-id-a
                                     :group-id group-id-a
                                     :version version-a}
@@ -538,6 +534,7 @@
                               (seed-artifacts-keys #{:last-build})
                               (artifact-data-loader deps)]
 
+         :compare/namespace [(compare-artifacts-loader-interceptor deps)]
          :compare/index [(compare-artifacts-loader-interceptor deps)])
        (assoc route :interceptors)))
 

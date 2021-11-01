@@ -115,10 +115,10 @@
   (or (not= (:group-id version-entity) (:group-id ns-entity))
       (not= (:artifact-id version-entity) (:artifact-id ns-entity))))
 
-(defn namespace-item [{:keys [ns version-entity class level nse]} & children]
+(defn namespace-item [{:keys [ns version-entity href class level nse]} & children]
   [:li
    [:a.link.hover-dark-blue.blue.dib.pv1
-    {:href (routes/url-for :artifact/namespace :path-params (assoc version-entity :namespace ns))
+    {:href href
      :class class
      :style {:margin-left (str (* (dec level) 10) "px")}}
     (->> (ns-tree/split-ns ns)
@@ -168,20 +168,21 @@
       [node (str "Mostly " (humanize-supported-platforms dominant-platf) " forms.")
        [:br] " Exceptions indicated."])))
 
-(defn definitions-list [_ns-entity defs {:keys [indicate-platforms-other-than]}]
+(defn definition [{:keys [name class platforms foreign-platform]}]
+  [:li.def-item
+   {:class class}
+   [:a.link.dim.blue.dib.pa1.pl0
+    {:href (str "#" name)}
+    name]
+   (when-not foreign-platform
+     [:sup.f7.gray
+      (-> platforms
+          (humanize-supported-platforms))])])
+
+(defn definitions-list [children]
   [:div.pb4
    [:ul.list.pl0
-    (for [def defs
-          :let [def-name (platf/get-field def :name)]]
-      [:li.def-item
-       [:a.link.dim.blue.dib.pa1.pl0
-        {:href (str "#" def-name)}
-        def-name]
-       (when-not (= (platf/platforms def)
-                    indicate-platforms-other-than)
-         [:sup.f7.gray
-          (-> (platf/platforms def)
-              (humanize-supported-platforms))])])]])
+    children]])
 
 (defn namespace-overview
   [ns-url-fn mp-ns defs fix-opts]
