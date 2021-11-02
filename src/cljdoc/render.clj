@@ -28,6 +28,9 @@
    (layout/layout
     {:main-sidebar-contents (sidebar/compare-sidebar path-params artifacts-data)})))
 
+(defn def->str [{[{:keys [name arglists]}] :platforms}]
+  (str name arglists))
+
 (defmethod render :compare/namespace
   [_ {:keys [artifact-id-a group-id-a version-a namespace] :as path-params} artifacts-data]
   (def path-params path-params)
@@ -35,10 +38,11 @@
         defs-b  (bundle/defs-for-ns-with-src-uri (:cache-bundle (second artifacts-data)) namespace)
         [added-var-names removed-var-names unchanged-var-names]
         (diff
-         (set (map (comp :name first :platforms) defs-a))
-         (set (map (comp :name first :platforms) defs-b)))
-        removed-vars (remove (fn [{[{:keys [name]}]:platforms}] (unchanged-var-names name)) defs-b)
-        [[dominant-platf] :as platf-stats] (api/platform-stats defs-a)]
+         (set (map def->str defs-a))
+         (set (map def->str defs-b)))
+        removed-vars (remove (fn [def] (unchanged-var-names (def->str def))) defs-b)
+        defs (sort-by def->str (concat defs-a removed-vars))
+        [[dominant-platf] :as platf-stats] (api/platform-stats defs)]
     (layout/page
      {}
      (layout/layout
@@ -46,8 +50,7 @@
        :vars-sidebar-contents (when (seq defs-a)
                                 [(api/platform-support-note platf-stats)
                                  (api/definitions-list
-                                   (for [def (sort-by (fn [{[{:keys [name]}]  :platforms}] name)
-                                                      (concat defs-a removed-vars))
+                                   (for [def defs
                                          :let [def-name (platf/get-field def :name)
                                                platforms (platf/platforms def)]]
                                      (api/definition
@@ -55,9 +58,9 @@
                                         :platforms platforms
                                         :class (string/join
                                                 " "
-                                                [(when (and added-var-names (added-var-names def-name))
+                                                [(when (and added-var-names (added-var-names (def->str def)))
                                                    "bg-light-green")
-                                                 (when (and removed-var-names (removed-var-names def-name))
+                                                 (when (and removed-var-names (removed-var-names (def->str def)))
                                                    "bg-light-red")])
                                         :foreign-platform (= (platf/platforms def) dominant-platf)})))])}))))
 
