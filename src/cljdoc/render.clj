@@ -32,21 +32,25 @@
   (str name arglists))
 
 (defmethod render :compare/namespace
-  [_ {:keys [artifact-id-a group-id-a version-a namespace] :as path-params} artifacts-data]
-  (def path-params path-params)
+  [_ {:keys [artifact-id-a group-id-a version-a namespace] :as route-params} artifacts-data]
   (let [defs-a (bundle/defs-for-ns-with-src-uri (:cache-bundle (first artifacts-data)) namespace)
         defs-b  (bundle/defs-for-ns-with-src-uri (:cache-bundle (second artifacts-data)) namespace)
         [added-var-names removed-var-names unchanged-var-names]
         (diff
          (set (map def->str defs-a))
          (set (map def->str defs-b)))
-        removed-vars (remove (fn [def] (unchanged-var-names (def->str def))) defs-b)
+        removed-vars (if unchanged-var-names
+                       (remove (fn [def] (unchanged-var-names (def->str def))) defs-b)
+                       defs-b)
         defs (sort-by def->str (concat defs-a removed-vars))
-        [[dominant-platf] :as platf-stats] (api/platform-stats defs)]
+        [[dominant-platf] :as platf-stats] (api/platform-stats defs)
+        [added-ns removed-ns] (diff
+                                 (set (map :name (:namespaces (:cache-bundle (first artifacts-data)))))
+                                 (set (map :name (:namespaces (:cache-bundle (second artifacts-data))))))]
     (layout/page
      {}
      (layout/layout
-      {:main-sidebar-contents (sidebar/compare-sidebar path-params artifacts-data)
+      {:main-sidebar-contents (sidebar/compare-sidebar route-params artifacts-data)
        :vars-sidebar-contents (when (seq defs-a)
                                 [(api/platform-support-note platf-stats)
                                  (api/definitions-list
@@ -62,7 +66,47 @@
                                                    "bg-light-green")
                                                  (when (and removed-var-names (removed-var-names (def->str def)))
                                                    "bg-light-red")])
-                                        :foreign-platform (= (platf/platforms def) dominant-platf)})))])}))))
+                                        :foreign-platform (= (platf/platforms def) dominant-platf)})))])
+       :content (let [ns-data (bundle/get-namespace (:cache-bundle (first artifacts-data)) namespace)
+                      fix-opts {:scm (-> (:cache-bundle (first artifacts-data)) :version :scm)
+                                :uri-map (fixref/uri-mapping (:version-entity (:cache-bundle (first artifacts-data)))
+                                                             (-> (:cache-bundle (first artifacts-data))
+                                                                 :version
+                                                                 :doc
+                                                                 doctree/add-slug-path
+                                                                 doctree/flatten*))}]
+                  (if ns-data
+                    (api/namespace-page
+                     {:ns-entity route-params
+                      :ns-data ns-data
+                      :defs defs
+                      :route-type :compare/namespace
+                      :fix-opts fix-opts})
+                    (api/sub-namespace-overview-page
+                     (for [mp-ns (->> (bundle/namespaces (:cache-bundle (first artifacts-data)))
+                                      (filter #(.startsWith (platf/get-field % :name) (:namespace route-params))))
+                           :let [ns (platf/get-field mp-ns :name)
+                                 ns-url-fn #(routes/url-for :compare/namespace :path-params (assoc route-params :namespace %))
+                                 defs (bundle/defs-for-ns (bundle/all-defs (:cache-bundle (first artifacts-data))) ns)
+                                 ns-href (ns-url-fn ns)]]
+                       (api/namespace-overview ns-url-fn mp-ns defs fix-opts
+                                               (api/namespace-section-name {:href ns-href :name ns
+                                                                            :class (string/join
+                                                                                    " "
+                                                                                    [(when (and added-ns (added-ns ns)) "bg-light-green")
+                                                                                     (when (and removed-ns (removed-ns ns)) "bg-light-red")])})
+                                               (for [d defs
+                                                     :let [def-name (platf/get-field d :name)]]
+                                                 (api/namespace-overview-item
+                                                  {:type (if (seq (platf/all-vals d :arglists))
+                                                           :function
+                                                           (platf/get-field d :type))
+                                                   :href (str ns-href "#" def-name)
+                                                   :class (string/join
+                                                           " "
+                                                           [(when (and added-ns (added-ns ns)) "bg-light-green")
+                                                            (when (and removed-ns (removed-ns ns)) "bg-light-red")])
+                                                   :def-name def-name})))))))}))))
 
 
 (defmethod render :artifact/version
@@ -162,14 +206,27 @@
              :content (api/namespace-page {:ns-entity ns-emap
                                            :ns-data ns-data
                                            :defs defs
+                                           :route-type :artifact/namespace
                                            :fix-opts fix-opts})})
            (layout/layout
             {:top-bar top-bar-component
              :main-sidebar-contents (sidebar/sidebar-contents route-params cache-bundle last-build)
-             :content (api/sub-namespace-overview-page {:ns-entity ns-emap
-                                                        :namespaces (bundle/namespaces cache-bundle)
-                                                        :defs (bundle/all-defs cache-bundle)
-                                                        :fix-opts fix-opts})}))
+             :content (api/sub-namespace-overview-page
+                       (for [mp-ns (->> (bundle/namespaces cache-bundle)
+                                        (filter #(.startsWith (platf/get-field % :name) (:namespace route-params))))
+                             :let [ns (platf/get-field mp-ns :name)
+                                   ns-url-fn #(routes/url-for :artifact/namespace :path-params (assoc route-params :namespace %))
+                                   defs (bundle/defs-for-ns (bundle/all-defs cache-bundle) ns)
+                                   ns-href (ns-url-fn ns)]]
+                         (api/namespace-overview ns-url-fn mp-ns defs fix-opts
+                                                 (api/namespace-section-name {:href ns-href :name ns})
+                                                 (for [d defs
+                                                       :let [def-name (platf/get-field d :name)]]
+                                                   (api/namespace-overview-item {:type (if (seq (platf/all-vals d :arglists))
+                                                                                         :function
+                                                                                         (platf/get-field d :type))
+                                                                                 :href (str ns-href "#" def-name)
+                                                                                 :def-name def-name})))))}))
          (layout/page {:title (str (:namespace ns-emap) " — " (util/clojars-id version-entity) " " (:version version-entity))
                        :canonical-url (some->> (bundle/more-recent-version cache-bundle)
                                                (merge route-params)

@@ -184,50 +184,47 @@
    [:ul.list.pl0
     children]])
 
+(defn namespace-overview-item [{:keys [type def-name href class]}]
+  [:li.dib.mr3.mb2
+   {:class class}
+   [:a.link.blue
+    {:data-cljdoc-type (name type)
+     :href href}
+    def-name]])
+
+(defn namespace-section-name [{:keys [href name class]}]
+  [:a.link.black
+   {:href href}
+   [:h2
+    {:data-cljdoc-type "namespace"}
+    [:span {:class class} name]
+    [:img.ml2 {:src "https://microicon-clone.vercel.app/chevron/12/357edd"}]]])
+
 (defn namespace-overview
-  [ns-url-fn mp-ns defs fix-opts]
+  [ns-url-fn mp-ns defs fix-opts title children]
   {:pre [(platf/multiplatform? mp-ns) (fn? ns-url-fn)]}
   (let [ns-name (platf/get-field mp-ns :name)]
     [:div
-     [:a.link.black
-      {:href (ns-url-fn ns-name)}
-      [:h2
-       {:data-cljdoc-type "namespace"}
-       ns-name
-       [:img.ml2 {:src "https://microicon-clone.vercel.app/chevron/12/357edd"}]]]
+     title
      (render-doc mp-ns
                  (render-wiki-link-fn ns-name ns-url-fn)
                  fix-opts)
      (if-not (seq defs)
        [:p.i.blue "No vars found in this namespace."]
        [:ul.list.pl0
-        (for [d defs
-              :let [def-name (platf/get-field d :name)
-                    type (if (seq (platf/all-vals d :arglists))
-                           :function
-                           (platf/get-field d :type))]]
-          [:li.dib.mr3.mb2
-           [:a.link.blue
-            {:data-cljdoc-type (name type)
-             :href (str (ns-url-fn ns-name) "#" def-name)}
-            def-name]])])]))
+        children])]))
 
 (defn sub-namespace-overview-page
-  [{:keys [ns-entity namespaces defs fix-opts]}]
+  [children]
   [:div.mw7.center.pv4
-   (for [mp-ns (->> namespaces
-                    (filter #(.startsWith (platf/get-field % :name) (:namespace ns-entity))))
-         :let [ns (platf/get-field mp-ns :name)
-               ns-url-fn #(routes/url-for :artifact/namespace :path-params (assoc ns-entity :namespace %))
-               defs (bundle/defs-for-ns defs ns)]]
-     (namespace-overview ns-url-fn mp-ns defs fix-opts))])
+   children])
 
-(defn namespace-page [{:keys [ns-entity ns-data defs fix-opts]}]
+(defn namespace-page [{:keys [ns-entity ns-data defs route-type fix-opts]}]
   (cljdoc.spec/assert :cljdoc.spec/namespace-entity ns-entity)
   (assert (platf/multiplatform? ns-data))
   (let [render-wiki-link (render-wiki-link-fn
                           (:namespace ns-entity)
-                          #(routes/url-for :artifact/namespace :path-params (assoc ns-entity :namespace %)))]
+                          #(routes/url-for route-type :path-params (assoc ns-entity :namespace %)))]
     [:div.ns-page
      [:div.w-80-ns.pv4
       [:h2 (:namespace ns-entity)]
