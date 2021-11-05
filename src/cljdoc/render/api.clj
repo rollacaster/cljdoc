@@ -70,46 +70,48 @@
       (str "(" def-name (when (seq argv) " ") (string/join " " argv) ")"))))
 
 (defn def-block
-  [def render-wiki-link fix-opts]
-  {:pre [(platf/multiplatform? def)]}
-  (let [def-name (platf/get-field def :name)]
-    [:div.def-block
-     [:hr.mv3.b--black-10]
-     [:h4.def-block-title.mv0.pv3
-      {:name (platf/get-field def :name), :id def-name}
-      def-name
-      (when-not (= :var (platf/get-field def :type))
-        [:span.f7.ttu.normal.gray.ml2 (platf/get-field def :type)])
-      (when (platf/get-field def :deprecated)
-        [:span.fw3.f6.light-red.ml2 "deprecated"])]
-     [:div.lh-copy
-      (if (platf/varies? def :arglists)
-        (for [p (sort (platf/platforms def))
-              :when (platf/get-field def :arglists p)]
-          [:div
-           [:span.f7.ttu.gray.db.nb2 (get {"clj" "Clojure" "cljs" "ClojureScript"} p) " arglists"]
-           (render-arglists def-name (platf/get-field def :arglists p))])
-        (render-arglists def-name (platf/get-field def :arglists)))]
-     (render-doc def render-wiki-link fix-opts)
-     (when (seq (platf/get-field def :members))
-       [:div.lh-copy.pl3.bl.b--black-10
-        (for [m (platf/get-field def :members)]
-          [:div
-           [:h5 (:name m)]
-           (render-arglists (:name m) (:arglists m))
-           (when (:doc m)
-             [:p (docstring->html (:doc m) render-wiki-link fix-opts)])])])
-     (when (or (platf/varies? def :src-uri) ; if it varies they can't be both nil
-               (platf/get-field def :src-uri)) ; if it doesn't vary, ensure non-nil
-       (if (platf/varies? def :src-uri)
+  ([def render-wiki-link fix-opts]
+   (def-block def render-wiki-link fix-opts ""))
+  ([def render-wiki-link fix-opts class]
+   {:pre [(platf/multiplatform? def)]}
+   (let [def-name (platf/get-field def :name)]
+     [:div.def-block
+      [:hr.mv3.b--black-10]
+      [:h4.def-block-title.mv0.pv3
+       {:name (platf/get-field def :name), :id def-name}
+       [:span {:class class} def-name]
+       (when-not (= :var (platf/get-field def :type))
+         [:span.f7.ttu.normal.gray.ml2 (platf/get-field def :type)])
+       (when (platf/get-field def :deprecated)
+         [:span.fw3.f6.light-red.ml2 "deprecated"])]
+      [:div.lh-copy
+       (if (platf/varies? def :arglists)
          (for [p (sort (platf/platforms def))
-               :when (platf/get-field def :src-uri p)]
-           [:a.link.f7.gray.hover-dark-gray.mr2
-            {:href (platf/get-field def :src-uri p)}
-            (format "source (%s)" p)])
-         [:a.link.f7.gray.hover-dark-gray.mr2 {:href (platf/get-field def :src-uri)} "source"]))
-     (when (seq (platf/all-vals def :doc))
-       [:a.link.f7.gray.hover-dark-gray.js--toggle-raw {:href "#"} "raw docstring"])]))
+               :when (platf/get-field def :arglists p)]
+           [:div
+            [:span.f7.ttu.gray.db.nb2 (get {"clj" "Clojure" "cljs" "ClojureScript"} p) " arglists"]
+            (render-arglists def-name (platf/get-field def :arglists p))])
+         (render-arglists def-name (platf/get-field def :arglists)))]
+      (render-doc def render-wiki-link fix-opts)
+      (when (seq (platf/get-field def :members))
+        [:div.lh-copy.pl3.bl.b--black-10
+         (for [m (platf/get-field def :members)]
+           [:div
+            [:h5 (:name m)]
+            (render-arglists (:name m) (:arglists m))
+            (when (:doc m)
+              [:p (docstring->html (:doc m) render-wiki-link fix-opts)])])])
+      (when (or (platf/varies? def :src-uri) ; if it varies they can't be both nil
+                (platf/get-field def :src-uri)) ; if it doesn't vary, ensure non-nil
+        (if (platf/varies? def :src-uri)
+          (for [p (sort (platf/platforms def))
+                :when (platf/get-field def :src-uri p)]
+            [:a.link.f7.gray.hover-dark-gray.mr2
+             {:href (platf/get-field def :src-uri p)}
+             (format "source (%s)" p)])
+          [:a.link.f7.gray.hover-dark-gray.mr2 {:href (platf/get-field def :src-uri)} "source"]))
+      (when (seq (platf/all-vals def :doc))
+        [:a.link.f7.gray.hover-dark-gray.js--toggle-raw {:href "#"} "raw docstring"])])))
 
 (defn from-dependency? [version-entity ns-entity]
   (or (not= (:group-id version-entity) (:group-id ns-entity))
@@ -219,20 +221,16 @@
   [:div.mw7.center.pv4
    children])
 
-(defn namespace-page [{:keys [ns-entity ns-data defs route-type fix-opts]}]
+(defn namespace-page [{:keys [ns-entity ns-data defs render-wiki-link fix-opts]} children]
   (cljdoc.spec/assert :cljdoc.spec/namespace-entity ns-entity)
   (assert (platf/multiplatform? ns-data))
-  (let [render-wiki-link (render-wiki-link-fn
-                          (:namespace ns-entity)
-                          #(routes/url-for route-type :path-params (assoc ns-entity :namespace %)))]
-    [:div.ns-page
-     [:div.w-80-ns.pv4
-      [:h2 (:namespace ns-entity)]
-      (render-doc ns-data render-wiki-link fix-opts)
-      (if (seq defs)
-        (for [adef defs]
-          (def-block adef render-wiki-link fix-opts))
-        [:p.i.blue "No vars found in this namespace."])]]))
+  [:div.ns-page
+   [:div.w-80-ns.pv4
+    [:h2 (:namespace ns-entity)]
+    (render-doc ns-data render-wiki-link fix-opts)
+    (if (seq defs)
+      children
+      [:p.i.blue "No vars found in this namespace."])]])
 
 (comment
   (:platforms --d)

@@ -45,8 +45,8 @@
         defs (sort-by def->str (concat defs-a removed-vars))
         [[dominant-platf] :as platf-stats] (api/platform-stats defs)
         [added-ns removed-ns] (diff
-                                 (set (map :name (:namespaces (:cache-bundle (first artifacts-data)))))
-                                 (set (map :name (:namespaces (:cache-bundle (second artifacts-data))))))]
+                               (set (map :name (:namespaces (:cache-bundle (first artifacts-data)))))
+                               (set (map :name (:namespaces (:cache-bundle (second artifacts-data))))))]
     (layout/page
      {}
      (layout/layout
@@ -76,12 +76,20 @@
                                                                  doctree/add-slug-path
                                                                  doctree/flatten*))}]
                   (if ns-data
-                    (api/namespace-page
-                     {:ns-entity route-params
-                      :ns-data ns-data
-                      :defs defs
-                      :route-type :compare/namespace
-                      :fix-opts fix-opts})
+                    (let [render-wiki-link (api/render-wiki-link-fn
+                                            (:namespace route-params)
+                                            #(routes/url-for :compare/namespace :path-params (assoc route-params :namespace %)))]
+                      (api/namespace-page
+                       {:ns-entity route-params
+                        :ns-data ns-data
+                        :defs defs
+                        :render-wiki-link render-wiki-link}
+                       (for [adef defs]
+                         (api/def-block adef render-wiki-link fix-opts
+                           (string/join
+                            " "
+                            [(when (and added-var-names (added-var-names (def->str adef))) "bg-light-green")
+                             (when (and removed-var-names (removed-var-names (def->str adef))) "bg-light-red")])))))
                     (api/sub-namespace-overview-page
                      (for [mp-ns (->> (bundle/namespaces (:cache-bundle (first artifacts-data)))
                                       (filter #(.startsWith (platf/get-field % :name) (:namespace route-params))))
@@ -203,11 +211,16 @@
                                              {:name def-name
                                               :platforms platforms
                                               :foreign-platform (= (platf/platforms def) dominant-platf)})))])
-             :content (api/namespace-page {:ns-entity ns-emap
-                                           :ns-data ns-data
-                                           :defs defs
-                                           :route-type :artifact/namespace
-                                           :fix-opts fix-opts})})
+             :content (let [render-wiki-link (api/render-wiki-link-fn
+                                              (:namespace route-params)
+                                              #(routes/url-for :artifact/namespace :path-params (assoc route-params :namespace %)))]
+                        (api/namespace-page
+                         {:ns-entity route-params
+                          :ns-data ns-data
+                          :defs defs
+                          :render-wiki-link render-wiki-link}
+                         (for [adef defs]
+                           (api/def-block adef render-wiki-link fix-opts))))})
            (layout/layout
             {:top-bar top-bar-component
              :main-sidebar-contents (sidebar/sidebar-contents route-params cache-bundle last-build)
