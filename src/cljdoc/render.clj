@@ -50,7 +50,8 @@
     (layout/page
      {}
      (layout/layout
-      {:main-sidebar-contents (sidebar/compare-sidebar route-params artifacts-data)
+      {:top-bar (layout/top-bar-generic)
+       :main-sidebar-contents (sidebar/compare-sidebar route-params artifacts-data)
        :vars-sidebar-contents (when (seq defs-a)
                                 [(api/platform-support-note platf-stats)
                                  (api/definitions-list
