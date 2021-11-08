@@ -28,3 +28,51 @@
         :version-entity
         {:id 3, :version "0.10.0", :group-id "reagent", :artifact-id "reagent"},
         :diff :cljdoc.diff/removed}]))))
+
+(t/deftest diff-vars
+  (t/testing "Removed vars"
+    (t/is
+     (= (sut/diff-vars
+         #{{:name "reagent-class?",
+            :file "reagent/impl/component.cljs",
+            :line 47,
+            :arglists '([c]),
+            :type :var,
+            :namespace "reagent.impl.component",
+            :platform "cljs"}
+           {:name "shallow-obj-to-map",
+            :file "reagent/impl/util.cljs",
+            :line 193,
+            :arglists '([o]),
+            :type :var,
+            :namespace "reagent.impl.util",
+            :platform "cljs"}}
+         #{{:name "reagent-class?",
+            :file "reagent/impl/component.cljs",
+            :line 57,
+            :arglists '([c]),
+            :type :var,
+            :namespace "reagent.impl.component",
+            :platform "cljs"}
+           {:name "shallow-obj-to-map",
+            :file "reagent/impl/component.cljs",
+            :line 14,
+            :arglists '([o]),
+            :type :var,
+            :namespace "reagent.impl.component",
+            :platform "cljs"}})
+        [{:name "reagent-class?",
+          :file "reagent/impl/component.cljs",
+          :line 47,
+          :arglists '([c]),
+          :type :var,
+          :namespace "reagent.impl.component",
+          :platform "cljs"}
+         {:name "shallow-obj-to-map",
+          :file "reagent/impl/util.cljs",
+          :line 193,
+          :arglists '([o]),
+          :type :var,
+          :namespace "reagent.impl.util",
+          :platform "cljs",
+          :diff :cljdoc.diff/removed}]))))
