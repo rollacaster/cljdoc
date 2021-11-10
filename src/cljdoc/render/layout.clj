@@ -167,33 +167,38 @@
 (defn top-bar-generic []
   [:nav.pv2.ph3.pv3-ns.ph4-ns.bb.b--black-10.flex.items-center home-link])
 
-(defn top-bar [version-entity scm-url]
-  [:nav.pv2.ph3.pv3-ns.ph4-ns.bb.b--black-10.flex.items-center.bg-white
-   [:a.dib.v-mid.link.dim.black.b.f6.mr3 {:href (routes/url-for :artifact/version :path-params version-entity)}
-    (util/clojars-id version-entity)]
-   [:a.dib.v-mid.link.dim.gray.f6.mr3
-    {:href (routes/url-for :artifact/index :path-params version-entity)}
-    (:version version-entity)]
-   home-link
-   [:div.tr
-    {:style {:flex-grow 1}}
-    [:form.dn.dib-ns.mr3 {:action "/api/request-build2" :method "POST"}
-     [:input.pa2.mr2.br2.ba.outline-0.blue {:type "hidden" :id "project" :name "project" :value (str (:group-id version-entity) "/" (:artifact-id version-entity))}]
-     [:input.pa2.mr2.br2.ba.outline-0.blue {:type "hidden" :id "version" :name "version" :value (:version version-entity)}]
-     [:input.f7.white.hover-near-white.outline-0.bn.bg-white {:type "submit" :value "rebuild"}]]
-    (cond
-      (and scm-url (scm/http-uri scm-url))
-      [:a.link.dim.gray.f6.tr
-       {:href (scm/http-uri scm-url)}
-       (let [icon (get #{:github :gitlab} (scm/provider scm-url) :git)]
-         [:img.v-mid.mr2-ns {:src (str "https://microicon-clone.vercel.app/" (name icon))}])
-       [:span.dib-ns.dn (scm/coordinate (scm/http-uri scm-url))]]
+(defn top-bar
+  ([version-entity scm-url]
+   (top-bar version-entity scm-url nil))
+  ([version-entity scm-url route-params]
+   [:nav.pv2.ph3.pv3-ns.ph4-ns.bb.b--black-10.flex.items-center.bg-white
+    [:a.dib.v-mid.link.dim.black.b.f6.mr3 {:href (routes/url-for :artifact/version :path-params version-entity)}
+     (util/clojars-id version-entity)]
+    [:a.dib.v-mid.link.dim.gray.f6.mr3
+     {:href (routes/url-for :artifact/index :path-params version-entity)}
+     (:version version-entity)
+     (when route-params
+       (str " → " (:version-b route-params)))]
+    home-link
+    [:div.tr
+     {:style {:flex-grow 1}}
+     [:form.dn.dib-ns.mr3 {:action "/api/request-build2" :method "POST"}
+      [:input.pa2.mr2.br2.ba.outline-0.blue {:type "hidden" :id "project" :name "project" :value (str (:group-id version-entity) "/" (:artifact-id version-entity))}]
+      [:input.pa2.mr2.br2.ba.outline-0.blue {:type "hidden" :id "version" :name "version" :value (:version version-entity)}]
+      [:input.f7.white.hover-near-white.outline-0.bn.bg-white {:type "submit" :value "rebuild"}]]
+     (cond
+       (and scm-url (scm/http-uri scm-url))
+       [:a.link.dim.gray.f6.tr
+        {:href (scm/http-uri scm-url)}
+        (let [icon (get #{:github :gitlab} (scm/provider scm-url) :git)]
+          [:img.v-mid.mr2-ns {:src (str "https://microicon-clone.vercel.app/" (name icon))}])
+        [:span.dib-ns.dn (scm/coordinate (scm/http-uri scm-url))]]
 
-      (and scm-url (scm/fs-uri scm-url))
-      [:span.f6 (scm/fs-uri scm-url)]
+       (and scm-url (scm/fs-uri scm-url))
+       [:span.f6 (scm/fs-uri scm-url)]
 
-      :else
-      [:a.f6.link.blue {:href (util/github-url :userguide/scm-faq)} "SCM info missing"])]])
+       :else
+       [:a.f6.link.blue {:href (util/github-url :userguide/scm-faq)} "SCM info missing"])]]))
 
 ;; Responsive Layout -----------------------------------------------------------
 

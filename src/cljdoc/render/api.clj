@@ -76,7 +76,8 @@
     [:div.def-block
      [:hr.mv3.b--black-10]
      [:h4.def-block-title.mv0.pv3
-      {:name (platf/get-field def :name), :id def-name}
+      {:name (platf/get-field def :name), :id def-name
+       :class (when (platf/get-field def :diff) "bg-light-red pl1")}
       def-name
       (when-not (= :var (platf/get-field def :type))
         [:span.f7.ttu.normal.gray.ml2 (platf/get-field def :type)])
@@ -111,7 +112,7 @@
      (when (seq (platf/all-vals def :doc))
        [:a.link.f7.gray.hover-dark-gray.js--toggle-raw {:href "#"} "raw docstring"])]))
 
-(defn namespace-list [{:keys [current version-entity]} namespaces]
+(defn namespace-list [{:keys [page-type current version-entity route-params]} namespaces]
   (let [keyed-namespaces (ns-tree/index-by :namespace namespaces)
         from-dependency? (fn from-dependency? [ns-entity]
                            (or (not= (:group-id version-entity) (:group-id ns-entity))
@@ -123,7 +124,7 @@
                   nse (get keyed-namespaces ns)]]
         [:li
          [:a.link.hover-dark-blue.blue.dib.pv1
-          {:href (routes/url-for :artifact/namespace :path-params (assoc version-entity :namespace ns))
+          {:href (routes/url-for page-type :path-params (assoc route-params :namespace ns))
            :class (when (= ns current) "b")
            :style style}
           (->> (ns-tree/split-ns ns)
@@ -175,7 +176,9 @@
           :let [def-name (platf/get-field def :name)]]
       [:li.def-item
        [:a.link.dim.blue.dib.pa1.pl0
-        {:href (str "#" def-name)}
+        {:href (str "#" def-name)
+         :class (when (platf/get-field def :diff)
+                  "bg-light-red")}
         def-name]
        (when-not (= (platf/platforms def)
                     indicate-platforms-other-than)
@@ -208,16 +211,17 @@
           [:li.dib.mr3.mb2
            [:a.link.blue
             {:data-cljdoc-type (name type)
-             :href (str (ns-url-fn ns-name) "#" def-name)}
+             :href (str (ns-url-fn ns-name) "#" def-name)
+             :class (when (platf/get-field d :diff) "bg-light-red pa1")}
             def-name]])])]))
 
 (defn sub-namespace-overview-page
-  [{:keys [ns-entity namespaces defs fix-opts]}]
+  [{:keys [namespaces defs fix-opts route-type route-params]}]
   [:div.mw7.center.pv4
    (for [mp-ns (->> namespaces
-                    (filter #(.startsWith (platf/get-field % :name) (:namespace ns-entity))))
+                    (filter #(.startsWith (platf/get-field % :name) (:namespace route-params))))
          :let [ns (platf/get-field mp-ns :name)
-               ns-url-fn #(routes/url-for :artifact/namespace :path-params (assoc ns-entity :namespace %))
+               ns-url-fn #(routes/url-for route-type :path-params (assoc route-params :namespace %))
                defs (bundle/defs-for-ns defs ns)]]
      (namespace-overview ns-url-fn mp-ns defs fix-opts))])
 

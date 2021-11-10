@@ -33,6 +33,23 @@
       (not (build-log/git-import-successful? build))
       (render-error "Git import failed in"))))
 
+(defn namespace-listing [page-type route-params cache-bundle version-entity]
+  (let [ns-entities (bundle/ns-entities cache-bundle)]
+    [:div.mb4
+     (layout/sidebar-title "Namespaces")
+     (if (seq ns-entities)
+       (api/namespace-list {:page-type page-type
+                            :current (:namespace route-params)
+                            :version-entity version-entity
+                            :route-params route-params}
+                           ns-entities)
+       [:p.f7.gray.lh-title
+        "We couldn't find any namespaces in this artifact. Most often the reason for this is
+           that the analysis failed or that the artifact has been mispackaged and does not
+           contain any Clojure source files. The latter might be on purpose for uber-module
+           style artifacts. " "Please " [:a.blue.link {:href (util/github-url :issues)} "open
+           an issue"] " and we'll be happy to look into it."])]))
+
 (defn sidebar-contents
   "Render a sidebar for a documentation page.
 
@@ -41,7 +58,7 @@
 
   If articles or namespaces are missing for a project there will be little messages pointing
   users to the relevant documentation or GitHub to open an issue."
-  [route-params {:keys [version-entity] :as cache-bundle} last-build]
+  [page-type route-params {:keys [version-entity] :as cache-bundle} last-build]
   (let [doc-tree (doctree/add-slug-path (-> cache-bundle :version :doc))
         split-doc-tree ((juxt filter remove)
                         #(contains? #{"Readme" "Changelog"} (:title %))
@@ -91,16 +108,4 @@
           " on how to fix this."]]])
 
      ;; Namespace listing
-     (let [ns-entities (bundle/ns-entities cache-bundle)]
-       [:div.mb4
-        (layout/sidebar-title "Namespaces")
-        (if (seq ns-entities)
-          (api/namespace-list {:current (:namespace route-params)
-                               :version-entity version-entity}
-                              ns-entities)
-          [:p.f7.gray.lh-title
-           "We couldn't find any namespaces in this artifact. Most often the reason for this is
-           that the analysis failed or that the artifact has been mispackaged and does not
-           contain any Clojure source files. The latter might be on purpose for uber-module
-           style artifacts. " "Please " [:a.blue.link {:href (util/github-url :issues)} "open
-           an issue"] " and we'll be happy to look into it."])])]))
+     (namespace-listing page-type route-params cache-bundle version-entity)]))

@@ -12,7 +12,8 @@
   - Rendering a sitemap (see [[sitemap-interceptor]])
   - Handling build requests (see [[request-build]], [[full-build]] & [[circle-ci-webhook]])
   - Redirecting to newer releases (see [[resolve-version-interceptor]] & [[jump-interceptor]])"
-  (:require [cljdoc.render.build-req :as render-build-req]
+  (:require [cljdoc.diff :refer [diff]]
+            [cljdoc.render.build-req :as render-build-req]
             [cljdoc.render.build-log :as render-build-log]
             [cljdoc.render.index-pages :as index-pages]
             [cljdoc.render.home :as render-home]
@@ -248,21 +249,18 @@
                    (:path-params request)]
                (pu/ok-html
                 ctx
-                (html/render :compare/index
-                             [{:artifact-id artifact-id-a
-                               :group-id group-id-a
-                               :version version-a}
-                              {:artifact-id artifact-id-b
-                               :group-id group-id-b
-                               :version version-b}]
-                             (->> [{:artifact-id artifact-id-a
-                                    :group-id group-id-a
-                                    :version version-a}
-                                   {:artifact-id artifact-id-b
-                                    :group-id group-id-b
-                                    :version version-b}]
-                                  (map (fn [v-ent]
-                                         (load-data sys v-ent #{:pom :cache-bundle}))))))))}))
+                (let [[data-a data-b]
+                      (->> [{:artifact-id artifact-id-a
+                             :group-id group-id-a
+                             :version version-a}
+                            {:artifact-id artifact-id-b
+                             :group-id group-id-b
+                             :version version-b}]
+                           (map (fn [v-ent]
+                                  (load-data sys v-ent #{:cache-bundle}))))]
+                  (html/render :compare/namespace
+                               (:path-params request)
+                               (update data-a :cache-bundle #(diff % (:cache-bundle data-b))))))))}))
 
 (defn view
   "Combine various interceptors into an interceptor chain for
@@ -538,7 +536,7 @@
                               (seed-artifacts-keys #{:last-build})
                               (artifact-data-loader deps)]
 
-         :compare/index [(compare-artifacts-loader-interceptor deps)])
+         :compare/namespace [(compare-artifacts-loader-interceptor deps)])
        (assoc route :interceptors)))
 
 (defmethod ig/init-key :cljdoc/pedestal [_ opts]
