@@ -12,7 +12,8 @@
   - Rendering a sitemap (see [[sitemap-interceptor]])
   - Handling build requests (see [[request-build]], [[full-build]] & [[circle-ci-webhook]])
   - Redirecting to newer releases (see [[resolve-version-interceptor]] & [[jump-interceptor]])"
-  (:require [cljdoc.diff :refer [diff]]
+  (:require [cljdoc.bundle :as bundle]
+            [cljdoc.diff :refer [diff]]
             [cljdoc.render.build-req :as render-build-req]
             [cljdoc.render.build-log :as render-build-log]
             [cljdoc.render.index-pages :as index-pages]
@@ -32,6 +33,7 @@
             [cljdoc.util :as util]
             [cljdoc.util.pom :as pom]
             [cljdoc.util.repositories :as repos]
+            [cljdoc.util.ns-tree :as ns-tree]
             [cljdoc.util.sentry :as sentry]
             [clojure.tools.logging :as log]
             [clojure.string :as string]
@@ -246,18 +248,23 @@
     :enter (fn compare-artifacts-loader-interceptor [{:keys [route request] :as ctx}]
              (let [{:keys [group-id-a artifact-id-a version-a
                            group-id-b artifact-id-b version-b]}
-                   (:path-params request)]
-               (pu/ok-html
-                ctx
-                (let [[data-a data-b]
-                      (->> [{:artifact-id artifact-id-a
-                             :group-id group-id-a
-                             :version version-a}
-                            {:artifact-id artifact-id-b
-                             :group-id group-id-b
-                             :version version-b}]
-                           (map (fn [v-ent]
-                                  (load-data sys v-ent #{:cache-bundle}))))]
+                   (:path-params request)
+                   page-type   (-> ctx :route :route-name)
+                   [data-a data-b]
+                   (->> [{:artifact-id artifact-id-a
+                          :group-id group-id-a
+                          :version version-a}
+                         {:artifact-id artifact-id-b
+                          :group-id group-id-b
+                          :version version-b}]
+                        (map (fn [v-ent]
+                               (load-data sys v-ent #{:cache-bundle}))))]
+               (if (= page-type :compare/version)
+                 (let [first-namespace (ffirst (sort (ns-tree/index-by :namespace (bundle/ns-entities (:cache-bundle data-a)))))
+                       location (routes/url-for :compare/namespace :params (assoc (:path-params request) :namespace first-namespace))]
+                   (assoc ctx :response {:status 302, :headers {"Location" location}}))
+                 (pu/ok-html
+                  ctx
                   (html/render :compare/namespace
                                (:path-params request)
                                (update data-a :cache-bundle #(diff % (:cache-bundle data-b))))))))}))
@@ -536,6 +543,7 @@
                               (seed-artifacts-keys #{:last-build})
                               (artifact-data-loader deps)]
 
+         :compare/version [(compare-artifacts-loader-interceptor deps)]
          :compare/namespace [(compare-artifacts-loader-interceptor deps)])
        (assoc route :interceptors)))
 
