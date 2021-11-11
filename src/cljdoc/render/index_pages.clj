@@ -9,7 +9,8 @@
             [clojure.spec.alpha :as spec]
             [version-clj.core :as v]))
 
-(spec/fdef artifact-index
+;; TODO This spec seems to be wrong :versions is not a collection
+#_(spec/fdef artifact-index
   :args (spec/cat :artifact-entity :cljdoc.spec/artifact-entity
                   :versions (spec/coll-of :cljdoc.spec/version-entity)))
 
