@@ -41,7 +41,8 @@
              :vars-sidebar-contents (when (seq defs)
                                       [(api/platform-support-note platf-stats)
                                        (api/definitions-list ns-emap defs {:indicate-platforms-other-than dominant-platf})])
-             :content (api/namespace-page {:ns-entity ns-emap
+             :content (api/namespace-page {:route-type :compare/namespace
+                                           :ns-entity ns-emap
                                            :ns-data ns-data
                                            :defs defs
                                            :fix-opts fix-opts})})
@@ -146,7 +147,8 @@
              :vars-sidebar-contents (when (seq defs)
                                       [(api/platform-support-note platf-stats)
                                        (api/definitions-list ns-emap defs {:indicate-platforms-other-than dominant-platf})])
-             :content (api/namespace-page {:ns-entity ns-emap
+             :content (api/namespace-page {:route-type :artifact/namespace
+                                           :ns-entity ns-emap
                                            :ns-data ns-data
                                            :defs defs
                                            :fix-opts fix-opts})})

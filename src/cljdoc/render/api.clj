@@ -225,12 +225,12 @@
                defs (bundle/defs-for-ns defs ns)]]
      (namespace-overview ns-url-fn mp-ns defs fix-opts))])
 
-(defn namespace-page [{:keys [ns-entity ns-data defs fix-opts]}]
+(defn namespace-page [{:keys [ns-entity ns-data defs fix-opts route-type]}]
   (cljdoc.spec/assert :cljdoc.spec/namespace-entity ns-entity)
   (assert (platf/multiplatform? ns-data))
   (let [render-wiki-link (render-wiki-link-fn
                           (:namespace ns-entity)
-                          #(routes/url-for :artifact/namespace :path-params (assoc ns-entity :namespace %)))]
+                          #(routes/url-for route-type :path-params (assoc ns-entity :namespace %)))]
     [:div.ns-page
      [:div.w-80-ns.pv4
       [:h2 (:namespace ns-entity)]
