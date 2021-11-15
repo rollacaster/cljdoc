@@ -1,0 +1,7 @@
+(ns user)
+(prn "user")
+(require '[cljdoc.server.system])
+(in-ns 'cljdoc.server.system)
+(require '[integrant.repl])
+(integrant.repl/set-prep! #(system-config (cfg/config)))
+(integrant.repl/go)

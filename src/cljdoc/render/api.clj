@@ -66,8 +66,12 @@
 
 (defn render-arglists [def-name arglists]
   (for [argv (sort-by count arglists)]
-    (def-code-block
-      (str "(" def-name (when (seq argv) " ") (string/join " " argv) ")"))))
+    (if (= (first argv) :cljdoc.diff/removed-arities)
+      [:div.bg-light-red
+       (def-code-block
+         (str "(" def-name (when (seq argv) " ") (string/join " " (rest argv)) ")"))]
+      (def-code-block
+        (str "(" def-name (when (seq argv) " ") (string/join " " argv) ")")))))
 
 (defn def-block
   [def render-wiki-link fix-opts]
@@ -77,7 +81,7 @@
      [:hr.mv3.b--black-10]
      [:h4.def-block-title.mv0.pv3
       {:name (platf/get-field def :name), :id def-name
-       :class (when (platf/get-field def :diff) "bg-light-red pl1")}
+       :class (when (= (platf/get-field def :diff) :cljdoc.diff/removed) "bg-light-red pl1")}
       def-name
       (when-not (= :var (platf/get-field def :type))
         [:span.f7.ttu.normal.gray.ml2 (platf/get-field def :type)])

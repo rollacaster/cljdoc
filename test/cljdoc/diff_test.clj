@@ -75,4 +75,30 @@
           :type :var,
           :namespace "reagent.impl.util",
           :platform "cljs",
-          :diff :cljdoc.diff/removed}]))))
+          :diff :cljdoc.diff/removed}])))
+  
+  (t/testing "Removed arities"
+    (t/is
+     (= (sut/diff-vars
+         [{:name "cached-react-class",
+           :file "reagent/impl/component.cljs",
+           :line 68,
+           :arglists '([c]),
+           :type :var,
+           :namespace "reagent.impl.component",
+           :platform "cljs"}]
+         [{:name "cached-react-class",
+           :file "reagent/impl/component.cljs",
+           :line 342,
+           :arglists '([compiler c]),
+           :type :var,
+           :namespace "reagent.impl.component",
+           :platform "cljs"}])
+        [{:name "cached-react-class",
+          :file "reagent/impl/component.cljs",
+          :line 68,
+          :arglists '([c]),
+          :type :var,
+          :namespace "reagent.impl.component",
+          :platform "cljs",
+          :diff #:cljdoc.diff{:removed-arities #{'[c]}}}]))))
