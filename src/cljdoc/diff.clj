@@ -1,4 +1,5 @@
-(ns cljdoc.diff)
+(ns cljdoc.diff
+  (:require [clojure.set :refer [difference]]))
 
 (defn group-ns [namespaces]
   (map (fn [ns]
@@ -23,10 +24,22 @@
   (let [vars-compare-group-1 (group-vars vars-a)
         vars-compare-group-2-lookup (into {} (group-vars vars-b))]
     (map
-     (fn [[k ns]]
-       (cond-> ns
-         (nil? (vars-compare-group-2-lookup k))
-         (assoc :diff :cljdoc.diff/removed)))
+     (fn [[k var]]
+       (let [var-in-group2 (vars-compare-group-2-lookup k)
+             var-removed (nil? var-in-group2)
+             arity-removed (seq (difference (set (:arglists var)) (set (:arglists var-in-group2))))]
+         (cond
+           var-removed (assoc var :diff ::removed)
+           arity-removed (-> var
+                             (assoc :diff ::arity-removed)
+                             (update :arglists
+                                     #(map
+                                       (fn [arglist]
+                                         (if ((set (:arglists var-in-group2)) arglist)
+                                           arglist
+                                           [::removed-arities arglist]))
+                                       %)))
+           :else var)))
      vars-compare-group-1)))
 
 (defn diff [bundle-a bundle-b]

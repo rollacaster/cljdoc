@@ -66,8 +66,12 @@
 
 (defn render-arglists [def-name arglists]
   (for [argv (sort-by count arglists)]
-    (def-code-block
-      (str "(" def-name (when (seq argv) " ") (string/join " " argv) ")"))))
+    (if (= (first argv) :cljdoc.diff/removed-arities)
+      [:div.bg-light-blue
+       (def-code-block
+         (str "(" def-name (when (seq argv) " ") (string/join " " (rest argv)) ")"))]
+      (def-code-block
+        (str "(" def-name (when (seq argv) " ") (string/join " " argv) ")")))))
 
 (defn def-block
   [def render-wiki-link fix-opts]
@@ -77,7 +81,7 @@
      [:hr.mv3.b--black-10]
      [:h4.def-block-title.mv0.pv3
       {:name (platf/get-field def :name), :id def-name
-       :class (when (platf/get-field def :diff) "bg-light-red pl1")}
+       :class (when (= (platf/get-field def :diff) :cljdoc.diff/removed) "bg-light-red pl1")}
       def-name
       (when-not (= :var (platf/get-field def :type))
         [:span.f7.ttu.normal.gray.ml2 (platf/get-field def :type)])
@@ -177,8 +181,10 @@
       [:li.def-item
        [:a.link.dim.blue.dib.pa1.pl0
         {:href (str "#" def-name)
-         :class (when (platf/get-field def :diff)
-                  "bg-light-red")}
+         :class (case (platf/get-field def :diff)
+                  :cljdoc.diff/removed "bg-light-red"
+                  :cljdoc.diff/arity-removed "bg-light-blue"
+                  "")}
         def-name]
        (when-not (= (platf/platforms def)
                     indicate-platforms-other-than)
@@ -212,7 +218,10 @@
            [:a.link.blue
             {:data-cljdoc-type (name type)
              :href (str (ns-url-fn ns-name) "#" def-name)
-             :class (when (platf/get-field d :diff) "bg-light-red pa1")}
+             :class (case (platf/get-field d :diff)
+                      :cljdoc.diff/removed "bg-light-red pa1"
+                      :cljdoc.diff/arity-removed "bg-light-blue pa1"
+                      "")}
             def-name]])])]))
 
 (defn sub-namespace-overview-page
