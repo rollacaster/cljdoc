@@ -50,6 +50,14 @@
            style artifacts. " "Please " [:a.blue.link {:href (util/github-url :issues)} "open
            an issue"] " and we'll be happy to look into it."])]))
 
+(defn compare-sidebar [route-params {:keys [version-entity] :as cache-bundle}]
+  [[:div.mb4 "Show breaking changes by indicating "
+    [:span.bg-light-red.blue.pa1.dib "removed vars"]
+    " and "
+    [:span.bg-light-blue.blue.pa1.dib "removed arities"]
+    "."]
+   (namespace-listing :compare/namespace route-params cache-bundle version-entity)])
+
 (defn sidebar-contents
   "Render a sidebar for a documentation page.
 

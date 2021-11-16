@@ -37,7 +37,7 @@
     (->> (if ns-data
            (layout/layout
             {:top-bar top-bar-component
-             :main-sidebar-contents [(sidebar/namespace-listing :compare/namespace route-params cache-bundle version-entity)]
+             :main-sidebar-contents (sidebar/compare-sidebar route-params cache-bundle)
              :vars-sidebar-contents (when (seq defs)
                                       [(api/platform-support-note platf-stats)
                                        (api/definitions-list ns-emap defs {:indicate-platforms-other-than dominant-platf})])
@@ -48,7 +48,7 @@
                                            :fix-opts fix-opts})})
            (layout/layout
             {:top-bar top-bar-component
-             :main-sidebar-contents [(sidebar/namespace-listing :compare/namespace route-params cache-bundle version-entity)]
+             :main-sidebar-contents (sidebar/compare-sidebar route-params cache-bundle)
              :content (api/sub-namespace-overview-page {:route-type :compare/namespace
                                                         :route-params route-params
                                                         :namespaces (bundle/namespaces cache-bundle)
