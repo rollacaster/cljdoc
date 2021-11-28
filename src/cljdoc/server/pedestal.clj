@@ -260,7 +260,10 @@
                         (map (fn [v-ent]
                                (load-data sys v-ent #{:cache-bundle}))))]
                (if (= page-type :compare/version)
-                 (let [first-namespace (ffirst (sort (ns-tree/index-by :namespace (bundle/ns-entities (:cache-bundle data-a)))))
+                 (let [first-namespace
+                       ;; FIXME Does this always work?
+                       (first (string/split (ffirst (sort (ns-tree/index-by :namespace (bundle/ns-entities (:cache-bundle data-a)))))
+                                           #"\."))
                        location (routes/url-for :compare/namespace :params (assoc (:path-params request) :namespace first-namespace))]
                    (assoc ctx :response {:status 302, :headers {"Location" location}}))
                  (pu/ok-html
