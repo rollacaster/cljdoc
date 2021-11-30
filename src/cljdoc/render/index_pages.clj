@@ -3,7 +3,8 @@
 
   These pages are used when switching between versions or
   browsing all artifacts under a specific group-id."
-  (:require [cljdoc.util :as util]
+  (:require [cljdoc.diff :refer [compare-versions]]
+            [cljdoc.util :as util]
             [cljdoc.render.layout :as layout]
             [cljdoc.server.routes :as routes]
             [clojure.spec.alpha :as spec]
@@ -40,6 +41,20 @@
                   [big-btn-link
                    {:href (routes/url-for :artifact/version :path-params {:group-id group-id :artifact-id artifact-id :version v})}
                    v]])]])
+           (when (> (count matching) 1)
+             [:div
+              [:h3 "Compare versions"]
+              [:ol.list.pl0.pv3
+               (map
+                (fn [[from to]]
+                  [:li.dib.mr3.mb3
+                   [big-btn-link
+                    {:href (routes/url-for :compare/version
+                                           :path-params
+                                           {:group-id-a group-id :artifact-id-a artifact-id :version-a from
+                                            :group-id-b group-id :artifact-id-b artifact-id :version-b to})}
+                    (str from " → " to)]])
+                (compare-versions matching))]])
            (when (seq others)
              [:div
               [:h3 "Other artifacts under the " group-id " group"]

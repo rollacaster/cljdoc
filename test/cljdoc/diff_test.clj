@@ -1,6 +1,7 @@
 (ns cljdoc.diff-test
   (:require [cljdoc.diff :as sut]
-            [clojure.test :as t]))
+            [clojure.test :as t]
+            [clojure.spec.test.alpha :as stest]))
 
 (t/deftest diff-namespaces
   (t/testing "Removed Namespace"
@@ -148,3 +149,17 @@
           :namespace "reagent.impl.component",
           :platform "cljs",
           :diff :cljdoc.diff/arity-removed}]))))
+
+(t/deftest compare-versions
+  (t/testing "works"
+    (t/is
+     (=
+      (sut/compare-versions
+       ["1.1.0" "0.10.0" "0.9.1" "0.7.0"])
+      [["0.10.0" "1.1.0"] ["0.9.1" "0.10.0"] ["0.7.0" "0.9.1"]])))
+
+  (t/testing "generative"
+    (t/is
+     (:check-passed
+      (stest/summarize-results
+       (stest/check `sut/compare-versions))))))

@@ -1,5 +1,8 @@
 (ns cljdoc.diff
-  (:require [clojure.set :refer [difference]]))
+  (:require [clojure.set :refer [difference]]
+            [clojure.spec.alpha :as spec]
+            [clojure.spec.gen.alpha :as gen]
+            [clojure.spec.test.alpha :as stest]))
 
 (defn group-ns [namespaces]
   (map (fn [ns]
@@ -46,3 +49,17 @@
   (-> bundle-a
       (update :namespaces #(diff-ns % (:namespaces bundle-b)))
       (update :defs #(diff-vars % (:defs bundle-b)))))
+
+(spec/fdef compare-versions
+  :args (spec/cat :versions (spec/coll-of :cljdoc.spec/version))
+  :ret (spec/coll-of
+        (spec/tuple :cljdoc.spec/version :cljdoc.spec/version)))
+
+(defn compare-versions [versions]
+  (reduce
+   (fn [c-versions [idx to]]
+     (if (> (dec (count versions)) idx)
+       (conj c-versions [(nth versions (inc idx)) to])
+       c-versions))
+   []
+   (map-indexed vector versions)))
