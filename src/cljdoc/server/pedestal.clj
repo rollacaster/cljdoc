@@ -259,18 +259,32 @@
                           :version version-b}]
                         (map (fn [v-ent]
                                (load-data sys v-ent #{:cache-bundle}))))]
-               (if (= page-type :compare/version)
-                 (let [first-namespace
-                       ;; FIXME Does this always work?
-                       (first (string/split (ffirst (sort (ns-tree/index-by :namespace (bundle/ns-entities (:cache-bundle data-a)))))
-                                           #"\."))
-                       location (routes/url-for :compare/namespace :params (assoc (:path-params request) :namespace first-namespace))]
-                   (assoc ctx :response {:status 302, :headers {"Location" location}}))
-                 (pu/ok-html
-                  ctx
-                  (html/render :compare/namespace
-                               (:path-params request)
-                               (update data-a :cache-bundle #(diff % (:cache-bundle data-b))))))))}))
+               (assoc ctx :artifacts-data [data-a data-b])))}))
+
+(def compare-version-redirect-interceptor
+  (interceptor/interceptor
+   {:name ::compare-version-redirect-interceptor
+    :enter (fn compare-version-redirect-interceptor [{[data-a] :artifacts-data
+                                                     :keys [request]
+                                                     :as ctx}]
+             (let [first-namespace
+                   ;; FIXME Does this always work?
+                   (first (string/split (ffirst (sort (ns-tree/index-by :namespace (bundle/ns-entities (:cache-bundle data-a)))))
+                                        #"\."))
+                   location (routes/url-for :compare/namespace :params (assoc (:path-params request) :namespace first-namespace))]
+               (assoc ctx :response {:status 302, :headers {"Location" location}})))}))
+
+(def compare-namespace-render-interceptor
+  (interceptor/interceptor
+   {:name ::compare-namespace-render-interceptor
+    :enter (fn compare-namespace-render-interceptor [{[data-a data-b] :artifacts-data
+                                                     :keys [request]
+                                                     :as ctx}]
+             (pu/ok-html
+              ctx
+              (html/render :compare/namespace
+                           (:path-params request)
+                           (update data-a :cache-bundle #(diff % (:cache-bundle data-b))))))}))
 
 (defn view
   "Combine various interceptors into an interceptor chain for
@@ -546,8 +560,10 @@
                               (seed-artifacts-keys #{:last-build})
                               (artifact-data-loader deps)]
 
-         :compare/version [(compare-artifacts-loader-interceptor deps)]
-         :compare/namespace [(compare-artifacts-loader-interceptor deps)])
+         :compare/version [(compare-artifacts-loader-interceptor deps)
+                           compare-version-redirect-interceptor]
+         :compare/namespace [(compare-artifacts-loader-interceptor deps)
+                             compare-namespace-render-interceptor])
        (assoc route :interceptors)))
 
 (defmethod ig/init-key :cljdoc/pedestal [_ opts]
